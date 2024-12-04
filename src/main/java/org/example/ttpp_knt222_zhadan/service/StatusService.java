@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.service;
 
+import org.example.ttpp_knt222_zhadan.Listener.StatusEventListener;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
@@ -13,10 +14,13 @@ import java.util.List;
 @Service
 public class StatusService {
     private final StatusDAO statusDAO;
+    private final StatusEventListener statusEventListener;
 
     public StatusService() {
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.statusDAO = factory.createStatusDAO();
+        this.statusEventListener = new StatusEventListener();
+        this.statusDAO.addEventListener(statusEventListener);
     }
 
     public List<Status> getAllStatuses() {

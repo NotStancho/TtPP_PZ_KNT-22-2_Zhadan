@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.dao.MySQL;
 
+import org.example.ttpp_knt222_zhadan.Listener.EquipmentDAOEventListener;
 import org.example.ttpp_knt222_zhadan.config.DatabaseConnection;
 import org.example.ttpp_knt222_zhadan.dao.EquipmentDAO;
 import org.example.ttpp_knt222_zhadan.model.Equipment;
@@ -10,10 +11,12 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MySQLEquipmentDAO implements EquipmentDAO {
     private static final Logger logger = LoggerFactory.getLogger(MySQLEquipmentDAO.class);
     private final Connection connection;
+    private final List<EquipmentDAOEventListener> listeners = new CopyOnWriteArrayList<>();
 
     public MySQLEquipmentDAO() {
         this.connection = DatabaseConnection.getConnection();
@@ -78,13 +81,23 @@ public class MySQLEquipmentDAO implements EquipmentDAO {
     @Override
     public void addEquipment(Equipment equipment) {
         String sql = "INSERT INTO equipment (serial_number, model, type, purchase_date) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, equipment.getSerialNumber());
             statement.setString(2, equipment.getModel());
             statement.setString(3, equipment.getType());
             statement.setDate(4, new java.sql.Date(equipment.getPurchaseDate().getTime()));
             statement.executeUpdate();
-            logger.info("Обладнання успішно додано: {}", equipment.getSerialNumber());
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int generatedId = generatedKeys.getInt(1);
+                    equipment.setEquipmentId(generatedId);
+                    logger.info("Обладнання успішно додано: {}, з ID: {}", equipment.getSerialNumber(), generatedId);
+                } else {
+                    logger.warn("Не вдалося отримати згенерований ID для обладнання: {}", equipment.getSerialNumber());
+                }
+            }
+            notifyEquipmentAdded(equipment);
         } catch (SQLException e) {
             logger.error("Помилка під час додавання обладнання", e);
         }
@@ -100,6 +113,7 @@ public class MySQLEquipmentDAO implements EquipmentDAO {
             statement.setInt(5, equipment.getEquipmentId());
             statement.executeUpdate();
             logger.info("Обладнання оновлено: {}", equipment.getSerialNumber());
+            notifyEquipmentUpdated(equipment);
         } catch (SQLException e) {
             logger.error("Помилка під час оновлення обладнання", e);
         }
@@ -111,8 +125,37 @@ public class MySQLEquipmentDAO implements EquipmentDAO {
             statement.setInt(1, equipmentId);
             statement.executeUpdate();
             logger.info("Обладнання з ID {} видалено", equipmentId);
+            notifyEquipmentDeleted(equipmentId);
         } catch (SQLException e) {
             logger.error("Помилка під час видалення обладнання з ID: " + equipmentId, e);
+        }
+    }
+
+    @Override
+    public void addEventListener(EquipmentDAOEventListener listener) {
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeEventListener(EquipmentDAOEventListener listener) {
+        listeners.remove(listener);
+    }
+
+    private void notifyEquipmentAdded(Equipment equipment) {
+        for (EquipmentDAOEventListener listener : listeners) {
+            listener.onEquipmentAdded(equipment);
+        }
+    }
+
+    private void notifyEquipmentUpdated(Equipment equipment) {
+        for (EquipmentDAOEventListener listener : listeners) {
+            listener.onEquipmentUpdated(equipment);
+        }
+    }
+
+    private void notifyEquipmentDeleted(int equipmentId) {
+        for (EquipmentDAOEventListener listener : listeners) {
+            listener.onEquipmentDeleted(equipmentId);
         }
     }
 

@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.service;
 
+import org.example.ttpp_knt222_zhadan.Listener.ClaimEventListener;
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -20,12 +21,16 @@ public class ClaimService {
     private static final Logger logger = LoggerFactory.getLogger(ClaimService.class);
     private final ClaimDAO claimDAO;
     private final EquipmentService equipmentService;
+    private final ClaimEventListener claimEventListener;
 
     @Autowired
     public ClaimService(EquipmentService equipmentService) {
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.claimDAO = factory.createClaimDAO();
         this.equipmentService = equipmentService;
+
+        this.claimEventListener = new ClaimEventListener();
+        this.claimDAO.addEventListener(claimEventListener);
     }
 
     public List<Claim> getAllClaims() {

@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.dao.MySQL;
 
+import org.example.ttpp_knt222_zhadan.Listener.ClaimDAOEventListener;
 import org.example.ttpp_knt222_zhadan.config.DatabaseConnection;
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
 import org.example.ttpp_knt222_zhadan.model.*;
@@ -13,10 +14,12 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class MySQLClaimDAO implements ClaimDAO {
     private static final Logger logger = LoggerFactory.getLogger(MySQLClaimDAO.class);
     private final Connection connection;
+    private final List<ClaimDAOEventListener> listeners = new CopyOnWriteArrayList<>();
 
     public MySQLClaimDAO() {
         this.connection = DatabaseConnection.getConnection();
@@ -77,7 +80,7 @@ public class MySQLClaimDAO implements ClaimDAO {
 
     @Override
     public void addClaim(Claim claim, int employeeId) {
-        String sql = "{CALL CreateClaim(?, ?, ?, ?, ?, ?)}";
+        String sql = "{CALL CreateClaim(?, ?, ?, ?, ?, ?, ?)}";
         try (CallableStatement statement = connection.prepareCall(sql)) {
             statement.setInt(1, claim.getClient().getUserId());
             statement.setInt(2, claim.getEquipment().getEquipmentId());
@@ -88,14 +91,11 @@ public class MySQLClaimDAO implements ClaimDAO {
 
             statement.executeUpdate();
 
-            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
-                if (generatedKeys.next()) {
-                    claim.setClaimId(generatedKeys.getInt(1));
-                    logger.info("Заявку успішно додано з ID: {}", claim.getClaimId());
-                }
-            }
+            int claimId = statement.getInt(7);
+            claim.setClaimId(claimId);
 
             logger.info("Заявку успішно додано разом з історією для співробітника з ID: {}", employeeId);
+            notifyClaimAdded(claim);
         } catch (SQLException e) {
             logger.error("Помилка під час додавання заявки з історією", e);
         }
@@ -170,6 +170,7 @@ public class MySQLClaimDAO implements ClaimDAO {
                 logger.error("Помилка під час оновлення обладнання для заявки", e);
             }
         }
+        notifyClaimUpdated(claim);
     }
 
     @Override
@@ -180,8 +181,37 @@ public class MySQLClaimDAO implements ClaimDAO {
             statement.setInt(1, claimId);
             statement.executeUpdate();
             logger.info("Заявку з ID {} успішно видалено", claimId);
+            notifyClaimDeleted(claimId);
         } catch (SQLException e) {
             logger.error("Помилка під час видалення заявки з ID: " + claimId, e);
+        }
+    }
+
+    @Override
+    public void addEventListener(ClaimDAOEventListener listener) {
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeEventListener(ClaimDAOEventListener listener) {
+        listeners.remove(listener);
+    }
+
+    private void notifyClaimAdded(Claim claim) {
+        for (ClaimDAOEventListener listener : listeners) {
+            listener.onClaimAdded(claim);
+        }
+    }
+
+    private void notifyClaimUpdated(Claim claim) {
+        for (ClaimDAOEventListener listener : listeners) {
+            listener.onClaimUpdated(claim);
+        }
+    }
+
+    private void notifyClaimDeleted(int claimId) {
+        for (ClaimDAOEventListener listener : listeners) {
+            listener.onClaimDeleted(claimId);
         }
     }
 

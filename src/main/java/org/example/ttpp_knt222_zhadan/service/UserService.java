@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.service;
 
+import org.example.ttpp_knt222_zhadan.Listener.UserEventListener;
 import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -16,10 +17,13 @@ import java.util.List;
 public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final UserDAO userDAO;
+    private final UserEventListener userEventListener;
 
     public UserService() {
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.userDAO = factory.createUserDAO();
+        this.userEventListener = new UserEventListener();
+        this.userDAO.addEventListener(userEventListener);
     }
 
     public List<User> getAllUsers() {

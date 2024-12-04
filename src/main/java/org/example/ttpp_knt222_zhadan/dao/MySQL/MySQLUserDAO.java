@@ -1,5 +1,6 @@
 package org.example.ttpp_knt222_zhadan.dao.MySQL;
 
+import org.example.ttpp_knt222_zhadan.Listener.UserDAOEventListener;
 import org.example.ttpp_knt222_zhadan.config.DatabaseConnection;
 import org.example.ttpp_knt222_zhadan.dao.UserDAO;
 import org.example.ttpp_knt222_zhadan.model.User;
@@ -8,17 +9,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Repository
 public class MySQLUserDAO implements UserDAO {
     private static final Logger logger = LoggerFactory.getLogger(MySQLUserDAO.class);
     private final Connection connection;
+    private final List<UserDAOEventListener> listeners = new CopyOnWriteArrayList<>();
 
     public MySQLUserDAO() {
         this.connection = DatabaseConnection.getConnection();
@@ -88,7 +88,7 @@ public class MySQLUserDAO implements UserDAO {
     public void addUser(User user) {
         logger.info("Додавання користувача: {}", user.getEmail());
         String sql = "INSERT INTO user (firstname, lastname, email, password, phone, role) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+        try (PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             statement.setString(1, user.getFirstname());
             statement.setString(2, user.getLastname());
             statement.setString(3, user.getEmail());
@@ -96,7 +96,17 @@ public class MySQLUserDAO implements UserDAO {
             statement.setString(5, user.getPhone());
             statement.setString(6, user.getRole());
             statement.executeUpdate();
-            logger.info("Користувача з email: {} успішно додано", user.getEmail());
+
+            try (ResultSet generatedKeys = statement.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    int generatedId = generatedKeys.getInt(1);
+                    user.setUserId(generatedId);
+                    logger.info("Користувача з email: {} успішно додано з ID: {}", user.getEmail(), generatedId);
+                } else {
+                    logger.warn("Не вдалося отримати ID для користувача: {}", user.getEmail());
+                }
+            }
+            notifyUserAdded(user);
         } catch (SQLException e) {
             logger.error("Помилка під час додавання користувача: {}", user.getEmail(), e);
             throw new RuntimeException("Помилка під час додавання користувача: " + user.getEmail(), e);
@@ -117,6 +127,7 @@ public class MySQLUserDAO implements UserDAO {
             statement.setLong(7, user.getUserId());
             statement.executeUpdate();
             logger.info("Користувача з ID: {} успішно оновлено", user.getUserId());
+            notifyUserUpdated(user);
         } catch (SQLException e) {
             logger.error("Помилка під час оновлення користувача з ID: {}", user.getUserId(), e);
             throw new RuntimeException("Помилка під час оновлення користувача з ID: " + user.getUserId(), e);
@@ -131,9 +142,38 @@ public class MySQLUserDAO implements UserDAO {
             statement.setInt(1, userId);
             statement.executeUpdate();
             logger.info("Користувача з ID: {} успішно видалено", userId);
+            notifyUserDeleted(userId);
         } catch (SQLException e) {
             logger.error("Помилка під час видалення користувача з ID: {}", userId, e);
             throw new RuntimeException("Помилка під час видалення користувача з ID: " + userId, e);
+        }
+    }
+
+    @Override
+    public void addEventListener(UserDAOEventListener listener) {
+        listeners.add(listener);
+    }
+
+    @Override
+    public void removeEventListener(UserDAOEventListener listener) {
+        listeners.remove(listener);
+    }
+
+    private void notifyUserAdded(User user) {
+        for (UserDAOEventListener listener : listeners) {
+            listener.onUserAdded(user);
+        }
+    }
+
+    private void notifyUserUpdated(User user) {
+        for (UserDAOEventListener listener : listeners) {
+            listener.onUserUpdated(user);
+        }
+    }
+
+    private void notifyUserDeleted(int userId) {
+        for (UserDAOEventListener listener : listeners) {
+            listener.onUserDeleted(userId);
         }
     }
 
