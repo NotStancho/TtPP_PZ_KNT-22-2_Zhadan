@@ -1,10 +1,13 @@
 package org.example.ttpp_knt222_zhadan.service;
 
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
-import org.example.ttpp_knt222_zhadan.dao.DAOFactory;
+import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.model.Claim;
 import org.example.ttpp_knt222_zhadan.model.Equipment;
 import org.example.ttpp_knt222_zhadan.model.Status;
+import org.example.ttpp_knt222_zhadan.model.builder.StatusBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,20 +17,20 @@ import java.util.List;
 
 @Service
 public class ClaimService {
-
     private static final Logger logger = LoggerFactory.getLogger(ClaimService.class);
     private final ClaimDAO claimDAO;
     private final EquipmentService equipmentService;
 
     @Autowired
-    public ClaimService(DAOFactory factory, EquipmentService equipmentService) {
+    public ClaimService(EquipmentService equipmentService) {
+        DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.claimDAO = factory.createClaimDAO();
         this.equipmentService = equipmentService;
     }
 
     public List<Claim> getAllClaims() {
         logger.info("Отримання всіх заявок");
-        return claimDAO.getAllClaims();
+        return claimDAO.getAllClaim();
     }
 
     public List<Claim> getClientClaims(int clientId) {
@@ -37,8 +40,8 @@ public class ClaimService {
 
     public void addClaim(Claim claim, int employeeId) {
         logger.info("Клієнт ID: {}, Співробітник ID: {}", claim.getClient().getUserId(), employeeId);
-        Equipment existingEquipment = equipmentService.getOrCreateEquipment(claim.getEquipment());
 
+        Equipment existingEquipment = equipmentService.getOrCreateEquipment(claim.getEquipment());
         if (existingEquipment != null && existingEquipment.getEquipmentId() > 0) {
             claim.setEquipment(existingEquipment);
         } else {
@@ -47,8 +50,9 @@ public class ClaimService {
             throw new IllegalStateException("Помилка з обладнанням.");
         }
 
-        Status receivedStatus = new Status();
-        receivedStatus.setStatusId(1); // Призначаємо статус "Отримано" (id = 1)
+        Status receivedStatus = new StatusBuilder()
+                .setStatusId(1) // Призначаємо статус "Отримано" (id = 1)
+                .build();
         claim.setStatus(receivedStatus);
 
         claimDAO.addClaim(claim, employeeId);

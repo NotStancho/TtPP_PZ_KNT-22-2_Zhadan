@@ -1,13 +1,16 @@
 package org.example.ttpp_knt222_zhadan.service;
 
 import org.example.ttpp_knt222_zhadan.controller.ClaimController;
+import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.dao.EquipmentDAO;
-import org.example.ttpp_knt222_zhadan.dao.DAOFactory;
 import org.example.ttpp_knt222_zhadan.model.Equipment;
+import org.example.ttpp_knt222_zhadan.model.builder.EquipmentBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 
 import java.util.List;
 
@@ -16,8 +19,8 @@ public class EquipmentService {
     private static final Logger logger = LoggerFactory.getLogger(ClaimController.class);
     private final EquipmentDAO equipmentDAO;
 
-    @Autowired
-    public EquipmentService(DAOFactory factory){
+    public EquipmentService(){
+        DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.equipmentDAO = factory.createEquipmentDAO();
     }
 
@@ -46,11 +49,24 @@ public class EquipmentService {
     }
 
     public void addEquipment(Equipment equipment) {
-        equipmentDAO.addEquipment(equipment);
+        Equipment newEquipment = new EquipmentBuilder()
+                .setSerialNumber(equipment.getSerialNumber())
+                .setModel(equipment.getModel())
+                .setType(equipment.getType())
+                .setPurchaseDate(equipment.getPurchaseDate())
+                .build();
+        equipmentDAO.addEquipment(newEquipment);
     }
 
     public void updateEquipment(Equipment equipment) {
-        equipmentDAO.updateEquipment(equipment);
+        Equipment updatedEquipment = new EquipmentBuilder()
+                .setEquipmentId(equipment.getEquipmentId())
+                .setSerialNumber(equipment.getSerialNumber())
+                .setModel(equipment.getModel())
+                .setType(equipment.getType())
+                .setPurchaseDate(equipment.getPurchaseDate())
+                .build();
+        equipmentDAO.updateEquipment(updatedEquipment);
     }
 
     public void deleteEquipment(int equipmentId) {

@@ -1,11 +1,13 @@
 package org.example.ttpp_knt222_zhadan.service;
 
-import org.example.ttpp_knt222_zhadan.dao.DAOFactory;
+import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
+import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
 import org.example.ttpp_knt222_zhadan.dao.UserDAO;
 import org.example.ttpp_knt222_zhadan.model.User;
+import org.example.ttpp_knt222_zhadan.model.builder.UserBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,8 +17,8 @@ public class UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final UserDAO userDAO;
 
-    @Autowired
-    public UserService(DAOFactory factory) {
+    public UserService() {
+        DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.userDAO = factory.createUserDAO();
     }
 
@@ -37,12 +39,29 @@ public class UserService {
 
     public void addUser(User user) {
         logger.info("Додавання нового користувача: {}", user.getEmail());
-        userDAO.addUser(user);
+        User newUser = new UserBuilder()
+                .setFirstname(user.getFirstname())
+                .setLastname(user.getLastname())
+                .setEmail(user.getEmail())
+                .setPassword(user.getPassword())
+                .setPhone(user.getPhone())
+                .setRole(user.getRole())
+                .build();
+        userDAO.addUser(newUser);
     }
 
     public void updateUser(User user) {
         logger.info("Оновлення користувача з ID: {}", user.getUserId());
-        userDAO.updateUser(user);
+        User updatedUser = new UserBuilder()
+                .setUserId(user.getUserId())
+                .setFirstname(user.getFirstname())
+                .setLastname(user.getLastname())
+                .setEmail(user.getEmail())
+                .setPassword(user.getPassword())
+                .setPhone(user.getPhone())
+                .setRole(user.getRole())
+                .build();
+        userDAO.updateUser(updatedUser);
     }
 
     public void deleteUser(int userId) {

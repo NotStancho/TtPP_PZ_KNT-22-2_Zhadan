@@ -1,9 +1,11 @@
 package org.example.ttpp_knt222_zhadan.service;
 
+import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
+import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.dao.StatusDAO;
-import org.example.ttpp_knt222_zhadan.dao.DAOFactory;
 import org.example.ttpp_knt222_zhadan.model.Status;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.example.ttpp_knt222_zhadan.model.builder.StatusBuilder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +14,13 @@ import java.util.List;
 public class StatusService {
     private final StatusDAO statusDAO;
 
-    @Autowired
-    public StatusService(DAOFactory factory) {
+    public StatusService() {
+        DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
         this.statusDAO = factory.createStatusDAO();
     }
 
     public List<Status> getAllStatuses() {
-        return statusDAO.getAllStatuses();
+        return statusDAO.getAllStatus();
     }
 
     public Status getStatusById(int statusId) {
@@ -26,11 +28,20 @@ public class StatusService {
     }
 
     public void addStatus(Status status) {
-        statusDAO.addStatus(status);
+        Status newStatus = new StatusBuilder()
+                .setName(status.getName())
+                .setDescription(status.getDescription())
+                .build();
+        statusDAO.addStatus(newStatus);
     }
 
     public void updateStatus(Status status){
-        statusDAO.updateStatus(status);
+        Status updatedStatus = new StatusBuilder()
+                .setStatusId(status.getStatusId())
+                .setName(status.getName())
+                .setDescription(status.getDescription())
+                .build();
+        statusDAO.updateStatus(updatedStatus);
     }
 
     public void deleteStatus(int statusId){
