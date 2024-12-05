@@ -1,8 +1,13 @@
 package org.example.ttpp_knt222_zhadan.dao.MySQL;
 
 import org.example.ttpp_knt222_zhadan.Listener.ClaimDAOEventListener;
+import org.example.ttpp_knt222_zhadan.Memento.ClaimHistory;
+import org.example.ttpp_knt222_zhadan.Memento.ClaimMemento;
 import org.example.ttpp_knt222_zhadan.config.DatabaseConnection;
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
+import org.example.ttpp_knt222_zhadan.dao.EquipmentDAO;
+import org.example.ttpp_knt222_zhadan.dao.StatusDAO;
+import org.example.ttpp_knt222_zhadan.dao.UserDAO;
 import org.example.ttpp_knt222_zhadan.model.*;
 import org.example.ttpp_knt222_zhadan.model.builder.ClaimBuilder;
 import org.example.ttpp_knt222_zhadan.model.builder.EquipmentBuilder;
@@ -20,6 +25,7 @@ public class MySQLClaimDAO implements ClaimDAO {
     private static final Logger logger = LoggerFactory.getLogger(MySQLClaimDAO.class);
     private final Connection connection;
     private final List<ClaimDAOEventListener> listeners = new CopyOnWriteArrayList<>();
+    private final ClaimHistory claimHistory = new ClaimHistory();
 
     public MySQLClaimDAO() {
         this.connection = DatabaseConnection.getConnection();
@@ -130,6 +136,9 @@ public class MySQLClaimDAO implements ClaimDAO {
 
     @Override
     public void updateClaim(Claim claim, int employeeId, String description) {
+        ClaimMemento memento = claim.saveStateToMemento();
+        claimHistory.save(memento);
+
         logger.info("Оновлення заявки з ID {}. Співробітник ID: {}. Опис дії: {}", claim.getClaimId(), employeeId, description);
 
         String setVariablesSQL = "SET @employee_id = ?, @description = ?";

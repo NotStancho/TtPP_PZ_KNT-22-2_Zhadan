@@ -1,5 +1,10 @@
 package org.example.ttpp_knt222_zhadan.model;
 
+import org.example.ttpp_knt222_zhadan.Memento.ClaimMemento;
+import org.example.ttpp_knt222_zhadan.dao.EquipmentDAO;
+import org.example.ttpp_knt222_zhadan.dao.StatusDAO;
+import org.example.ttpp_knt222_zhadan.dao.UserDAO;
+
 public class Claim {
     private int claimId;
     private User client;
@@ -43,5 +48,22 @@ public class Claim {
 
     public void setDefectDescription(String defectDescription) {
         this.defectDescription = defectDescription;
+    }
+
+    public ClaimMemento saveStateToMemento() {
+        return new ClaimMemento(
+                this.claimId,
+                this.client.getUserId(),
+                this.equipment.getEquipmentId(),
+                this.status.getStatusId(),
+                this.defectDescription
+        );
+    }
+    public void restoreStateFromMemento(ClaimMemento memento, UserDAO userDAO, EquipmentDAO equipmentDAO, StatusDAO statusDAO) {
+        this.claimId = memento.getClaimId();
+        this.client = userDAO.getUserById(memento.getClientId());
+        this.equipment = equipmentDAO.getEquipmentById(memento.getEquipmentId());
+        this.status = statusDAO.getStatusById(memento.getStatusId());
+        this.defectDescription = memento.getDefectDescription();
     }
 }

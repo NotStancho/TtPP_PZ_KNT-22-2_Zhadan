@@ -104,6 +104,24 @@ public class ClaimController {
         }
     }
 
+    @PutMapping("/{claimId}/undo")
+    public ResponseEntity<String> undoLastChange(@PathVariable int claimId, @RequestParam String actionDescription, Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            logger.info("Скасування змін для заявки з ID: {}", claimId);
+
+            User user = userService.getUserByEmail(authentication.getName());
+            int employeeId = user.getUserId();
+
+            logger.info("Скасування змін ініційовано співробітником з ID: {}", employeeId);
+
+            claimService.undoLastChange(claimId, employeeId, actionDescription);
+            return new ResponseEntity<>("Зміни успішно скасовані", HttpStatus.OK);
+        } else {
+            logger.warn("Користувач не авторизований для скасування змін");
+            return new ResponseEntity<>("Користувач не авторизований", HttpStatus.UNAUTHORIZED);
+        }
+    }
+
     @DeleteMapping("/{claimId}")
     public ResponseEntity<String> deleteClaim(@PathVariable int claimId, Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {

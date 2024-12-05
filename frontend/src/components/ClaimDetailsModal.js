@@ -111,6 +111,33 @@ const ClaimDetailsModal = ({ show, handleClose, claimId, role, onClaimUpdated })
 
     };
 
+    const handleUndoChanges = async () => {
+        if (!actionDescription.trim()) {
+            alert("Введіть опис для скасування змін.");
+            return;
+        }
+
+        const token = localStorage.getItem('jwtToken');
+        try {
+            const response = await fetch(`http://localhost:8080/api/claims/${claimId}/undo?actionDescription=${actionDescription}`, {
+                method: 'PUT',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (response.ok) {
+                console.log('Зміни успішно скасовані');
+                handleClose();
+                onClaimUpdated();
+            } else {
+                console.error('Помилка при скасуванні змін');
+            }
+        } catch (error) {
+            console.error("Помилка при скасуванні змін:", error);
+        }
+    }
+
     return (
         <Modal show={show} onHide={handleClose} centered size="lg">
             <Modal.Header closeButton>
@@ -231,11 +258,16 @@ const ClaimDetailsModal = ({ show, handleClose, claimId, role, onClaimUpdated })
                 <Button variant="secondary" onClick={handleClose}>
                     Закрити
                 </Button>
-                {editable || statusEditable ? (
-                    <Button variant="primary" onClick={handleSaveChanges}>
-                        Зберегти зміни
-                    </Button>
-                ) : null}
+                {(editable || statusEditable) && (
+                    <>
+                        <Button variant="primary" onClick={handleSaveChanges}>
+                            Зберегти зміни
+                        </Button>
+                        <Button variant="warning" onClick={handleUndoChanges}>
+                            Скасувати зміни
+                        </Button>
+                    </>
+                )}
             </Modal.Footer>
         </Modal>
     );

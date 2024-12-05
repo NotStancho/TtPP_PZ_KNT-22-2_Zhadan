@@ -1,6 +1,8 @@
 package org.example.ttpp_knt222_zhadan.service;
 
 import org.example.ttpp_knt222_zhadan.Listener.ClaimEventListener;
+import org.example.ttpp_knt222_zhadan.Memento.ClaimHistory;
+import org.example.ttpp_knt222_zhadan.Memento.ClaimMemento;
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -22,6 +24,7 @@ public class ClaimService {
     private final ClaimDAO claimDAO;
     private final EquipmentService equipmentService;
     private final ClaimEventListener claimEventListener;
+    private final ClaimHistory claimHistory = new ClaimHistory();
 
     @Autowired
     public ClaimService(EquipmentService equipmentService) {
@@ -70,9 +73,41 @@ public class ClaimService {
     }
 
     public void updateClaim(Claim claim, int employeeId, String actionDescription) {
+        ClaimMemento memento = claim.saveStateToMemento();
+        claimHistory.save(memento);
+
         claimDAO.updateClaim(claim, employeeId, actionDescription);
         logger.info("Заявка з ID {} успішно оновлена", claim.getClaimId());
     }
+
+    public void undoLastChange(int claimId, int employeeId, String actionDescription) {
+        Claim claim = claimDAO.getClaimById(claimId);
+        if (claim == null) {
+            logger.error("Заявка з ID {} не знайдена.", claimId);
+            return;
+        }
+
+        if (!claimHistory.hasHistory()) {
+            logger.info("Немає змін для скасування для заявки з ID {}.", claimId);
+            return;
+        }
+
+        ClaimMemento memento = claimHistory.undo();
+        if (memento != null) {
+            logger.info("Скасування змін для заявки з ID: {}", claim.getClaimId());
+
+            DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
+            claim.restoreStateFromMemento(
+                    memento,
+                    factory.createUserDAO(),
+                    factory.createEquipmentDAO(),
+                    factory.createStatusDAO());
+
+            claimDAO.updateClaim(claim, employeeId, actionDescription);
+            logger.info("Скасовані зміни синхронізовані з базою даних для заявки з ID: {}", claim.getClaimId());
+        }
+    }
+
 
     public void deleteClaim(int claimId) {
         logger.info("Видалення заявки з ID: {}", claimId);
