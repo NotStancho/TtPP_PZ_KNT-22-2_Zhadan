@@ -1,6 +1,7 @@
 package org.example.ttpp_knt222_zhadan.service;
 
 import org.example.ttpp_knt222_zhadan.Listener.EquipmentEventListener;
+import org.example.ttpp_knt222_zhadan.Proxy.EquipmentDAOProxy;
 import org.example.ttpp_knt222_zhadan.controller.ClaimController;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -21,9 +22,10 @@ public class EquipmentService {
     private final EquipmentDAO equipmentDAO;
     private final EquipmentEventListener equipmentEventListener;
 
-    public EquipmentService(){
+    public EquipmentService(UserService userService){
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
-        this.equipmentDAO = factory.createEquipmentDAO();
+        EquipmentDAO originalEquipmentDAO = factory.createEquipmentDAO();
+        this.equipmentDAO = new EquipmentDAOProxy(originalEquipmentDAO, userService);
         this.equipmentEventListener = new EquipmentEventListener();
         this.equipmentDAO.addEventListener(equipmentEventListener);
     }

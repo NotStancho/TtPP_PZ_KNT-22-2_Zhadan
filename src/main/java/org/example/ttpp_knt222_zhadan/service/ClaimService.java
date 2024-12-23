@@ -3,6 +3,7 @@ package org.example.ttpp_knt222_zhadan.service;
 import org.example.ttpp_knt222_zhadan.Listener.ClaimEventListener;
 import org.example.ttpp_knt222_zhadan.Memento.ClaimHistory;
 import org.example.ttpp_knt222_zhadan.Memento.ClaimMemento;
+import org.example.ttpp_knt222_zhadan.Proxy.ClaimDAOProxy;
 import org.example.ttpp_knt222_zhadan.dao.ClaimDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -10,10 +11,13 @@ import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.model.Claim;
 import org.example.ttpp_knt222_zhadan.model.Equipment;
 import org.example.ttpp_knt222_zhadan.model.Status;
+import org.example.ttpp_knt222_zhadan.model.User;
 import org.example.ttpp_knt222_zhadan.model.builder.StatusBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,9 +31,11 @@ public class ClaimService {
     private final ClaimHistory claimHistory = new ClaimHistory();
 
     @Autowired
-    public ClaimService(EquipmentService equipmentService) {
+    public ClaimService(EquipmentService equipmentService, UserService userService) {
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
-        this.claimDAO = factory.createClaimDAO();
+        ClaimDAO originalClaimDAO = factory.createClaimDAO();
+
+        this.claimDAO = new ClaimDAOProxy(originalClaimDAO, userService);
         this.equipmentService = equipmentService;
 
         this.claimEventListener = new ClaimEventListener();

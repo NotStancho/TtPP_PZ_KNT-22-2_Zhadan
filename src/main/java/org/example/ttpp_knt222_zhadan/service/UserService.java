@@ -1,6 +1,7 @@
 package org.example.ttpp_knt222_zhadan.service;
 
 import org.example.ttpp_knt222_zhadan.Listener.UserEventListener;
+import org.example.ttpp_knt222_zhadan.Proxy.UserDAOProxy;
 import org.example.ttpp_knt222_zhadan.dao.Factory.DAOFactory;
 import org.example.ttpp_knt222_zhadan.dao.Factory.FabricMethodDAO;
 import org.example.ttpp_knt222_zhadan.dao.Factory.TypeDAO;
@@ -21,10 +22,12 @@ public class UserService {
 
     public UserService() {
         DAOFactory factory = FabricMethodDAO.getDAOFactory(TypeDAO.MYSQL);
-        this.userDAO = factory.createUserDAO();
+        UserDAO originalUserDAO = factory.createUserDAO();
+        this.userDAO = new UserDAOProxy(originalUserDAO, this);
         this.userEventListener = new UserEventListener();
         this.userDAO.addEventListener(userEventListener);
     }
+
 
     public List<User> getAllUsers() {
         logger.info("Отримання всіх користувачів");
